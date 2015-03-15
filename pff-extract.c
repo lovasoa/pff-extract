@@ -128,8 +128,13 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
   void* rawrgb = tjAlloc(3*head->tile_size*head->tile_size);
   int tilew = 0, tileh = 0, tileSubSamp = 0;
   tjDecompressHeader2(dec, rawjpg, rawjpgsize, &tilew, &tileh, &tileSubSamp);
-  tjDecompress2(dec, rawjpg, rawjpgsize, rawrgb,
+  int ret = tjDecompress2(dec, rawjpg, rawjpgsize, rawrgb,
                   head->tile_size, 0, head->tile_size, TJPF_RGB, 0);
+
+  if (ret == -1) {
+    printf("Unable to open tile %d as a JPEG file: %s\n", tilenum, tjGetErrorStr());
+    exit(1);
+  }
 
   int numTilesX = width_in_tiles(head);
   uint32_t offset = ((tilenum % numTilesX) +
