@@ -74,6 +74,11 @@ void read_head(pff_t *head, FILE *f) {
   readat(0x420, &head->height, f);
   readat(0x424, &head->jheader_num_elems, f);
 
+  if (head->tile_size == 0 || head->jheader_size == 0 || head->width == 0 ||
+      head->height == 0 || head->jheader_num_elems == 0) {
+      error(1, 0, "Invalid file");
+  }
+
   //Read the table of JFIF headers from the file
   head->jheaders = calloc(head->jheader_num_elems, sizeof(jheader_t));
   if (head->jheaders == 0) {
