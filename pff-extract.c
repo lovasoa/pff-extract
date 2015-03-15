@@ -156,8 +156,8 @@ void read_file(pff_t *head, FILE* fin, FILE* fout) {
     printf("\r Extracting tile %d out of %d", (i+1), totalTiles);
     read_tile(head, fin, i, imgrgb);
   }
-  printf("\n");
 
+  printf("\nCompressing the output image\n");
   tjhandle comp = tjInitCompress();
   unsigned char* imgjpg = NULL;
   unsigned long imgjpgsize = 0;
