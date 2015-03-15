@@ -136,6 +136,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
            rawrgb + i * tilew * 3,
            tilew * 3);
   }
+  free(rawjpg);
 }
 
 void read_file(pff_t *head, FILE* fin, FILE* fout) {
