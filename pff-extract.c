@@ -76,6 +76,10 @@ void read_head(pff_t *head, FILE *f) {
 
   //Read the table of JFIF headers from the file
   head->jheaders = calloc(head->jheader_num_elems, sizeof(jheader_t));
+  if (head->jheaders == 0) {
+    perror("Unable to allocate memory for the JFIF headers table");
+    exit(1);
+  }
   uint32_t i, size;
   fseek(f, 0x428, SEEK_SET);
   for (i=0; i < head->jheader_num_elems; i++) {
