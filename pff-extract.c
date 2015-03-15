@@ -74,8 +74,11 @@ void read_head(pff_t *head, FILE *f) {
   readat(0x420, &head->height, f);
   readat(0x424, &head->jheader_num_elems, f);
 
+  fseek(f, 0, SEEK_END); long filesize = ftell(f);
+
   if (head->tile_size == 0 || head->jheader_size == 0 || head->width == 0 ||
-      head->height == 0 || head->jheader_num_elems == 0) {
+      head->height == 0 || head->jheader_num_elems == 0 ||
+      head->jheader_num_elems * 4 > filesize || head->ntiles * 8 > filesize) {
       error(1, 0, "Invalid file");
   }
 
