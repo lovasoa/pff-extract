@@ -5,7 +5,7 @@
  *
  */
 
-#define _BSD_SOURCE
+#define _DEFAULT_SOURCE 1
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -79,7 +79,8 @@ void read_head(pff_t *head, FILE *f) {
   if (head->tile_size == 0 || head->jheader_size == 0 || head->width == 0 ||
       head->height == 0 || head->jheader_num_elems == 0 ||
       head->jheader_num_elems * 4 > filesize || head->ntiles * 8 > filesize) {
-      error(1, 0, "Invalid file");
+      perror("Invalid file");
+      exit(1);
   }
 
   //Read the table of JFIF headers from the file
