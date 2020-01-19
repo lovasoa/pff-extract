@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <endian.h>
+#include <assert.h>
 #include <string.h>
 #include <turbojpeg.h>
 
@@ -41,7 +42,8 @@ typedef struct {
 
 uint32_t readuint32(FILE *file) {
   uint32_t r = 0;
-  fread(&r, sizeof(r), 1, file);
+  size_t read = fread(&r, sizeof(r), 1, file);
+  assert(read == 1);
   return be32toh(r);
 }
 
@@ -95,7 +97,8 @@ void read_head(pff_t *head, FILE *f) {
     size = readuint32(f);
     head->jheaders[i].size = size;
     head->jheaders[i].data = malloc((size_t) size);
-    fread(head->jheaders[i].data, size, 1, f);
+    size_t read = fread(head->jheaders[i].data, size, 1, f);
+    assert(read == 1);
   }
 
   //Read the table of tile pointers
@@ -103,7 +106,9 @@ void read_head(pff_t *head, FILE *f) {
   head->tile_pointers = calloc(head->ntiles, 8);
   uint64_t ptr = 0;
   for (i=0; i < head->ntiles; i++) {
-    fread(&ptr, 8, 1, f);
+    size_t read = fread(&ptr, 8, 1, f);
+    assert(read == 1);
+    assert(ptr != 0);
     head->tile_pointers[i] = be64toh(ptr);
   }
 }
@@ -121,7 +126,9 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
   uint64_t size = end-begin-sizeof(tilefooter_t);
   //Read footer
   tilefooter_t footer;
-  fread(&footer, sizeof(tilefooter_t), 1, fin); 
+  size_t read;
+  read = fread(&footer, sizeof(tilefooter_t), 1, fin);
+  assert(read == 1);
   footer.jheader_num = be32toh(footer.jheader_num);
   //Read jheader
   jheader_t jheader = head->jheaders[footer.jheader_num];
@@ -130,7 +137,8 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
   void* rawjpg = malloc(rawjpgsize);
   memcpy(rawjpg, jheader.data, jheader.size);
   fseek(fin, begin, SEEK_SET);
-  fread(rawjpg+jheader.size, size, 1, fin);
+  read = fread(rawjpg+jheader.size, size, 1, fin);
+  assert(read == 1);
 
   //Read the jpg image
   tjhandle dec = tjInitDecompress();
