@@ -3,6 +3,11 @@ Pyramidal File Format (PFF) to jpeg converter. PFF is zoomify's single-file zoom
 
 The pff file format is proprietary, and [I reversed-engineered it](https://github.com/lovasoa/pff-extract/wiki/Zoomify-PFF-file-format-documentation) using only a few sample files. This program is based on this reverse-engineering work, and thus might not work on every pff file. If it doesn't work for you, please [open a bug](https://github.com/lovasoa/pff-extract/issues/new).
 
+## Installation
+
+We distribute linux binaries on our [release page](https://github.com/lovasoa/pff-extract/releases).
+You can use them on Windows with [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and on MacOS with [multipass](https://multipass.run/).
+
 ## Usage
 ```
 pff-extract input.pff [output.jpg]
