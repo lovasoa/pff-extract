@@ -5,11 +5,18 @@ on: [push]
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
     
     steps:
     - uses: actions/checkout@v1
-    - name: install dependencies
-      run: sudo apt-get install libturbojpeg0-dev
-    - name: make
-      run: make
+    - name: install dependencies and build
+      run: |
+        source ./install-dependencies.sh
+        make
+    - uses: actions/upload-artifact@v2
+      with:
+        name: pff-extract-${{ matrix.os }}
+        path: pff-extract

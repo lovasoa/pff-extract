@@ -5,8 +5,8 @@ The pff file format is proprietary, and [I reversed-engineered it](https://githu
 
 ## Installation
 
-We distribute linux binaries on our [release page](https://github.com/lovasoa/pff-extract/releases).
-You can use them on Windows with [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10) and on MacOS with [multipass](https://multipass.run/).
+We distribute linux and MacOS binaries on our [release page](https://github.com/lovasoa/pff-extract/releases).
+If you are on windows, you can use the linux (ubuntu) binaries with [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10).
 
 ## Usage
 ```
