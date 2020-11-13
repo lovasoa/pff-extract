@@ -169,8 +169,16 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
                   head->tile_size, 0, head->tile_size, TJPF_RGB, 0);
 
   if (ret == -1) {
-    fprintf(stderr, "\nUnable to open tile %d as a JPEG file: %s\n", tilenum, tjGetErrorStr());
-    // There may still be some decoded data, so continue anyway
+    int error_code = tjGetErrorCode(dec);
+    char* error_str = tjGetErrorStr2(dec);
+    if (error_code == TJERR_WARNING) {
+      // Only a warning, there is some decoded data, so continue anyway
+      fprintf(stderr, "WARNING: Tile %d may be corrupted: %s\n", tilenum, error_str);
+    } else {
+      // Fatal error
+      fprintf(stderr, "ERROR: Unable to open tile %d as a JPEG file: %s\n",
+        tilenum, error_str);
+    }
   }
 
   int numTilesX = width_in_tiles(head);
