@@ -21,6 +21,13 @@ jobs:
         release_name: Version ${{ github.ref }}
         draft: false
         prerelease: false
+    - name: Output Release URL File
+      run: echo "${{ steps.create_release.outputs.upload_url }}" > release_url.txt
+    - name: Save Release URL File for publish
+      uses: actions/upload-artifact@v1
+      with:
+        name: release_url
+        path: release_url.txt
   build:
     name: Build and upload
     runs-on: ${{ matrix.os }}
@@ -33,6 +40,15 @@ jobs:
       run: |
         source ./install-dependencies.sh
         make
+    - name: Load Release URL File from release job
+      uses: actions/download-artifact@v1
+      with:
+        name: release_url
+    - name: Get Release File Name & Upload URL
+      id: get_release_info
+      run: |
+        value=$(cat release_url/release_url.txt)
+        echo ::set-output name=upload_url::$value
     - name: Upload Release Asset
       id: upload-release-asset 
       uses: actions/upload-release-asset@v1.0.1
