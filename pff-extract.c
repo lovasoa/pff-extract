@@ -60,10 +60,18 @@ typedef struct {
   uint32_t jheader_num;
 } tilefooter_t;
 
+void fread_or_exit(void *ptr, size_t size, FILE *stream) {
+  size_t read = fread(ptr, size, 1, stream);
+  if (read != 1) {
+    fprintf(stderr, "Failed to read %ld bytes at index %ld. The file is probably malformed.\n",
+      size, ftell(stream));
+    exit(1);
+  }
+}
+
 uint32_t readuint32(FILE *file) {
   uint32_t r = 0;
-  size_t read = fread(&r, sizeof(r), 1, file);
-  assert(read == 1);
+  fread_or_exit(&r, sizeof(r), file);
   return be32toh(r);
 }
 
@@ -116,9 +124,13 @@ void read_head(pff_t *head, FILE *f) {
   for (i=0; i < head->jheader_num_elems; i++) {
     size = readuint32(f);
     head->jheaders[i].size = size;
-    head->jheaders[i].data = malloc((size_t) size);
-    size_t read = fread(head->jheaders[i].data, size, 1, f);
-    assert(read == 1);
+    uint8_t* data = malloc((size_t) size);
+    if (data == NULL) {
+      fprintf(stderr, "Failed to allocate %d bytes for tile header %d.", size, i);
+      exit(1);
+    }
+    fread_or_exit(data, size, f);
+    head->jheaders[i].data = data;
   }
 
   //Read the table of tile pointers
@@ -126,9 +138,11 @@ void read_head(pff_t *head, FILE *f) {
   head->tile_pointers = calloc(head->ntiles, 8);
   uint64_t ptr = 0;
   for (i=0; i < head->ntiles; i++) {
-    size_t read = fread(&ptr, 8, 1, f);
-    assert(read == 1);
-    assert(ptr != 0);
+    fread_or_exit(&ptr, 8, f);
+    if (ptr == 0) {
+      fprintf(stderr, "Malformed file: null tile pointer\n");
+      exit(1);
+    }
     head->tile_pointers[i] = be64toh(ptr);
   }
 }
@@ -153,11 +167,23 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
     return;
   }
   footer.jheader_num = be32toh(footer.jheader_num);
+  if (footer.jheader_num >= head->jheader_num_elems) {
+    fprintf(stderr, "Invalid tile footer for tile %d\n", tilenum);
+    return;
+  }
   //Read jheader
   jheader_t jheader = head->jheaders[footer.jheader_num];
   //Write tile
-  unsigned int rawjpgsize = jheader.size + size;
+  size_t rawjpgsize = (size_t)jheader.size + (size_t)size;
+  if (rawjpgsize < size) {
+    fprintf(stderr, "Integer overflow, raw jpg tile too large.\n");
+    return;
+  }
   void* rawjpg = malloc(rawjpgsize);
+  if (rawjpg == NULL) {
+    fprintf(stderr, "ERROR: Unable to allocate memory for the raw jpeg tile.\n");
+    return;
+  }
   memcpy(rawjpg, jheader.data, jheader.size);
   fseek(fin, begin, SEEK_SET);
   read = fread(rawjpg+jheader.size, size, 1, fin);
@@ -172,6 +198,10 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
   assert(dec != NULL);
   int rawrgb_size = 3 * head->tile_size * head->tile_size;
   void* rawrgb = tjAlloc(rawrgb_size);
+  if (rawrgb == NULL) {
+    fprintf(stderr, "Unable to allocate enough memory for a single tile.\n");
+    exit(1);
+  }
   int tilew = 0, tileh = 0, tileSubSamp = 0;
   tjDecompressHeader2(dec, rawjpg, rawjpgsize, &tilew, &tileh, &tileSubSamp);
   int ret = tjDecompress2(dec, rawjpg, rawjpgsize, rawrgb,
