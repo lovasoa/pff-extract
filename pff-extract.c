@@ -162,6 +162,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
 
   //Read the jpg image
   tjhandle dec = tjInitDecompress();
+  assert(dec != NULL);
   void* rawrgb = tjAlloc(3*head->tile_size*head->tile_size);
   int tilew = 0, tileh = 0, tileSubSamp = 0;
   tjDecompressHeader2(dec, rawjpg, rawjpgsize, &tilew, &tileh, &tileSubSamp);
