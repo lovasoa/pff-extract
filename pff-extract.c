@@ -148,7 +148,10 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
   tilefooter_t footer;
   size_t read;
   read = fread(&footer, sizeof(tilefooter_t), 1, fin);
-  assert(read == 1);
+  if (read != 1) {
+    fprintf(stderr, "\nERROR: Unable to read tile footer for tile %d\n", tilenum);
+    return;
+  }
   footer.jheader_num = be32toh(footer.jheader_num);
   //Read jheader
   jheader_t jheader = head->jheaders[footer.jheader_num];
@@ -158,16 +161,22 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
   memcpy(rawjpg, jheader.data, jheader.size);
   fseek(fin, begin, SEEK_SET);
   read = fread(rawjpg+jheader.size, size, 1, fin);
-  assert(read == 1);
+  if (read != 1) {
+    free(rawjpg);
+    fprintf(stderr, "\nERROR: Unable to read tile body for tile %d\n", tilenum);
+    return;
+  }
 
   //Read the jpg image
   tjhandle dec = tjInitDecompress();
   assert(dec != NULL);
-  void* rawrgb = tjAlloc(3*head->tile_size*head->tile_size);
+  int rawrgb_size = 3 * head->tile_size * head->tile_size;
+  void* rawrgb = tjAlloc(rawrgb_size);
   int tilew = 0, tileh = 0, tileSubSamp = 0;
   tjDecompressHeader2(dec, rawjpg, rawjpgsize, &tilew, &tileh, &tileSubSamp);
   int ret = tjDecompress2(dec, rawjpg, rawjpgsize, rawrgb,
                   head->tile_size, 0, head->tile_size, TJPF_RGB, 0);
+  free(rawjpg);
 
   if (ret == -1) {
     int error_code = tjGetErrorCode(dec);
@@ -179,6 +188,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
       // Fatal error
       fprintf(stderr, "\nERROR: Unable to open tile %d as a JPEG file: %s\n",
         tilenum, error_str);
+      memset(rawrgb, 0, rawrgb_size);
     }
   }
   tjDestroy(dec);
@@ -192,11 +202,12 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
            rawrgb + i * tilew * 3,
            tilew * 3);
   }
-  free(rawjpg);
 }
 
 void read_file(pff_t *head, FILE* fin, FILE* fout) {
-  void* imgrgb = tjAlloc(3 * head->width*head->height);
+  int imgrgb_size = 3 * head->width * head->height;
+  void* imgrgb = tjAlloc(imgrgb_size);
+  memset(imgrgb, 0, imgrgb_size);
   
   uint32_t i, totalTiles = width_in_tiles(head) * height_in_tiles(head);
   for (i=0; i<totalTiles; i++) {
