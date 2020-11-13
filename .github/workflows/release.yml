@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - name: install dependencies
-      run: sudo apt-get install libturbojpeg0-dev
-    - name: make
-      run: make
+    - name: build
+      run: |
+        source ./install-dependencies.sh
+        make
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1.0.0

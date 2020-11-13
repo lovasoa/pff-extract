@@ -10,6 +10,6 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: install dependencies
-      run: sudo apt-get install libturbojpeg0-dev
-    - name: make
-      run: make
+      run: |
+        source ./install-dependencies.sh
+        make
