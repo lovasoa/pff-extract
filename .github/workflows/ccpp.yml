@@ -12,7 +12,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: install dependencies
+    - name: install dependencies and build
       run: |
         source ./install-dependencies.sh
         make
