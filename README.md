@@ -21,4 +21,5 @@ gcc -o pff-extract pff-extract.c -lturbojpeg
 ### Dependencies
  * [libjpeg-turbo](http://www.libjpeg-turbo.org/) v2.0+ to decompress the tiles
    and to compress the resulting image.
-   In ubuntu 20.04+, it can be installed with `sudo apt install libturbojpeg0-dev`
+   In ubuntu 20.04+, it can be installed with `sudo apt install libturbojpeg0-dev`.
+   On fedora: `sudo dnf install turbojpeg-devel`.
