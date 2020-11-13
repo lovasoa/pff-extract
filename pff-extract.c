@@ -207,6 +207,10 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
 void read_file(pff_t *head, FILE* fin, FILE* fout) {
   int imgrgb_size = 3 * head->width * head->height;
   void* imgrgb = tjAlloc(imgrgb_size);
+  if (imgrgb == NULL) {
+    fprintf(stderr, "ERROR: Could not allocate enough memory to decode this image. Needed %.2f Gb.", (float)imgrgb_size/1000000000);
+    exit(1);
+  }
   memset(imgrgb, 0, imgrgb_size);
   
   uint32_t i, totalTiles = width_in_tiles(head) * height_in_tiles(head);
