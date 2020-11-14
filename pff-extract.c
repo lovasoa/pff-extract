@@ -151,18 +151,17 @@ void read_head(pff_t *head, FILE *f) {
 /**
  * Write a tile to a file
  */
-void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest) {
+void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* tile_directory) {
   //Read tile contents
   uint64_t begin = (tilenum == 0)
                       ? 0x424 + head->jheader_size + 8*head->ntiles
                       : head->tile_pointers[tilenum-1];
   uint64_t end = head->tile_pointers[tilenum];
+  uint64_t size = end - begin - sizeof(tilefooter_t);
   fseek(fin, end-sizeof(tilefooter_t), SEEK_SET);
-  uint64_t size = end-begin-sizeof(tilefooter_t);
   //Read footer
   tilefooter_t footer;
-  size_t read;
-  read = fread(&footer, sizeof(tilefooter_t), 1, fin);
+  size_t read = fread(&footer, sizeof(tilefooter_t), 1, fin);
   if (read != 1) {
     fprintf(stderr, "\nERROR: Unable to read tile footer for tile %u\n", tilenum);
     return;
@@ -192,6 +191,17 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest) {
     free(rawjpg);
     fprintf(stderr, "\nERROR: Unable to read tile body for tile %u\n", tilenum);
     return;
+  }
+
+
+  if (tile_directory != NULL) {
+    char* filename = malloc(512);
+    snprintf(filename, 512, "%s/tile_%05u.jpg", tile_directory, tilenum);
+    FILE* tmpf = fopen(filename, "w");
+    if (tmpf != NULL) {
+      fwrite(rawjpg, rawjpgsize, 1, tmpf);
+      fclose(tmpf);
+    } else perror("Unable to write tile to tile directory");
   }
 
   //Read the jpg image
@@ -235,7 +245,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest) {
   }
 }
 
-void read_file(pff_t *head, FILE* fin, FILE* fout) {
+void read_file(pff_t *head, FILE* fin, FILE* fout, char* tile_directory) {
   uint64_t imgrgb_size = 3 * (uint64_t)head->width * (uint64_t)head->height;
   if (imgrgb_size > INT_MAX) {
     fprintf(stderr, "ERROR: image is too large, cannot allocate %.2f Gb.\n", (float)imgrgb_size/1000000000);
@@ -251,7 +261,7 @@ void read_file(pff_t *head, FILE* fin, FILE* fout) {
   uint32_t i, totalTiles = width_in_tiles(head) * height_in_tiles(head);
   for (i=0; i<totalTiles; i++) {
     printf("\r Extracting tile %u out of %u", (i+1), totalTiles);
-    read_tile(head, fin, i, imgrgb);
+    read_tile(head, fin, i, imgrgb, tile_directory);
   }
 
   printf("\nCompressing the output image\n");
@@ -266,7 +276,7 @@ void read_file(pff_t *head, FILE* fin, FILE* fout) {
 
 int main(int argc, char** argv) {
   if (argc < 2) {
-    printf("Usage: %s input.pff [out.jpg]\n", argv[0]);
+    printf("Usage: %s input.pff [out.jpg] [tile_directory]\nRead the PFF file input.pff and extract its largest zoom level to out.jpg. If tile_directory is specified, every single tile at that level is exported as a separate file in that folder.", argv[0]);
     return 1;
   }
 
@@ -283,12 +293,14 @@ int main(int argc, char** argv) {
     return 3;
   }
 
+  char* tile_directory = (argc>3) ? argv[3] : NULL;
+
   pff_t head;
   read_head(&head, f);
   printf("version: 0x%x\nsize: %u x %u\nnumber of tiles: %u\n",
       head.version,head.width, head.height, head.ntiles); 
 
-  read_file(&head, f, fjpg);
+  read_file(&head, f, fjpg, tile_directory);
 
   fclose(f);
   fclose(fjpg);
