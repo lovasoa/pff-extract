@@ -194,9 +194,13 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
   }
 
 
+  int numTilesX = width_in_tiles(head);
+  size_t tile_x = (size_t)tilenum % numTilesX;
+  size_t tile_y = (size_t)tilenum / numTilesX;
+
   if (tile_directory != NULL) {
     char* filename = malloc(512);
-    snprintf(filename, 512, "%s/tile_%05u.jpg", tile_directory, tilenum);
+    snprintf(filename, 512, "%s/tile_%04u_%04u.jpg", tile_directory, tile_y, tile_x);
     FILE* tmpf = fopen(filename, "w");
     if (tmpf != NULL) {
       fwrite(rawjpg, rawjpgsize, 1, tmpf);
@@ -234,9 +238,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
   }
   tjDestroy(dec);
 
-  int numTilesX = width_in_tiles(head);
-  size_t offset = ((size_t)(tilenum % numTilesX) +
-                     (tilenum / numTilesX) * (size_t)head->width) * (size_t)head-> tile_size * 3;
+  size_t offset = (tile_x + tile_y * head->width) * head->tile_size * 3;
   int i;
   for (i=0; i < tileh; i++) {
     memcpy(dest + offset + i * head->width * 3,
