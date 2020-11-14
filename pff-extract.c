@@ -235,7 +235,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
 }
 
 void read_file(pff_t *head, FILE* fin, FILE* fout) {
-  int imgrgb_size = 3 * head->width * head->height;
+  uint64_t imgrgb_size = 3 * (uint64_t)head->width * (uint64_t)head->height;
   void* imgrgb = tjAlloc(imgrgb_size);
   if (imgrgb == NULL) {
     fprintf(stderr, "ERROR: Could not allocate enough memory to decode this image. Needed %.2f Gb.", (float)imgrgb_size/1000000000);
@@ -272,8 +272,9 @@ int main(int argc, char** argv) {
   }
 
   FILE *fjpg = fopen((argc>2) ? argv[2] : "out.jpg", "w");
-  if (f == NULL) {
+  if (fjpg == NULL) {
     perror("Unable to open output file");
+    fclose(f);
     return 3;
   }
 
