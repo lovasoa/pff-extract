@@ -32,6 +32,7 @@
 #endif
 #include <assert.h>
 #include <string.h>
+#include <limits.h>
 #include <turbojpeg.h>
 
 typedef struct {
@@ -63,7 +64,7 @@ typedef struct {
 void fread_or_exit(void *ptr, size_t size, FILE *stream) {
   size_t read = fread(ptr, size, 1, stream);
   if (read != 1) {
-    fprintf(stderr, "Failed to read %ld bytes at index %ld. The file is probably malformed.\n",
+    fprintf(stderr, "Failed to read %zu bytes at index %ld. The file is probably malformed.\n",
       size, ftell(stream));
     exit(1);
   }
@@ -119,14 +120,14 @@ void read_head(pff_t *head, FILE *f) {
     perror("Unable to allocate memory for the JFIF headers table");
     exit(1);
   }
-  uint32_t i, size;
   fseek(f, 0x428, SEEK_SET);
+  uint32_t i;
   for (i=0; i < head->jheader_num_elems; i++) {
-    size = readuint32(f);
+    uint32_t size = readuint32(f);
     head->jheaders[i].size = size;
     uint8_t* data = malloc((size_t) size);
     if (data == NULL) {
-      fprintf(stderr, "Failed to allocate %d bytes for tile header %d.", size, i);
+      fprintf(stderr, "Failed to allocate %u bytes for tile header %u.", size, i);
       exit(1);
     }
     fread_or_exit(data, size, f);
@@ -150,7 +151,7 @@ void read_head(pff_t *head, FILE *f) {
 /**
  * Write a tile to a file
  */
-void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
+void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest) {
   //Read tile contents
   uint64_t begin = (tilenum == 0)
                       ? 0x424 + head->jheader_size + 8*head->ntiles
@@ -163,12 +164,12 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
   size_t read;
   read = fread(&footer, sizeof(tilefooter_t), 1, fin);
   if (read != 1) {
-    fprintf(stderr, "\nERROR: Unable to read tile footer for tile %d\n", tilenum);
+    fprintf(stderr, "\nERROR: Unable to read tile footer for tile %u\n", tilenum);
     return;
   }
   footer.jheader_num = be32toh(footer.jheader_num);
   if (footer.jheader_num >= head->jheader_num_elems) {
-    fprintf(stderr, "Invalid tile footer for tile %d\n", tilenum);
+    fprintf(stderr, "Invalid tile footer for tile %u\n", tilenum);
     return;
   }
   //Read jheader
@@ -179,7 +180,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
     fprintf(stderr, "Integer overflow, raw jpg tile too large.\n");
     return;
   }
-  void* rawjpg = malloc(rawjpgsize);
+  uint8_t* rawjpg = malloc(rawjpgsize);
   if (rawjpg == NULL) {
     fprintf(stderr, "ERROR: Unable to allocate memory for the raw jpeg tile.\n");
     return;
@@ -189,7 +190,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
   read = fread(rawjpg+jheader.size, size, 1, fin);
   if (read != 1) {
     free(rawjpg);
-    fprintf(stderr, "\nERROR: Unable to read tile body for tile %d\n", tilenum);
+    fprintf(stderr, "\nERROR: Unable to read tile body for tile %u\n", tilenum);
     return;
   }
 
@@ -197,14 +198,14 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
   tjhandle dec = tjInitDecompress();
   assert(dec != NULL);
   int rawrgb_size = 3 * head->tile_size * head->tile_size;
-  void* rawrgb = tjAlloc(rawrgb_size);
+  uint8_t* rawrgb = tjAlloc(rawrgb_size);
   if (rawrgb == NULL) {
     fprintf(stderr, "Unable to allocate enough memory for a single tile.\n");
     exit(1);
   }
   int tilew = 0, tileh = 0, tileSubSamp = 0;
-  tjDecompressHeader2(dec, rawjpg, rawjpgsize, &tilew, &tileh, &tileSubSamp);
-  int ret = tjDecompress2(dec, rawjpg, rawjpgsize, rawrgb,
+  int ret = tjDecompressHeader2(dec, rawjpg, rawjpgsize, &tilew, &tileh, &tileSubSamp);
+  if (ret != -1) ret = tjDecompress2(dec, rawjpg, rawjpgsize, rawrgb,
                   head->tile_size, 0, head->tile_size, TJPF_RGB, 0);
   free(rawjpg);
 
@@ -213,10 +214,10 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
     char* error_str = tjGetErrorStr2(dec);
     if (error_code == TJERR_WARNING) {
       // Only a warning, there is some decoded data, so continue anyway
-      fprintf(stderr, "\nWARNING: Tile %d may be corrupted: %s\n", tilenum, error_str);
+      fprintf(stderr, "\nWARNING: Tile %u may be corrupted: %s\n", tilenum, error_str);
     } else {
       // Fatal error
-      fprintf(stderr, "\nERROR: Unable to open tile %d as a JPEG file: %s\n",
+      fprintf(stderr, "\nERROR: Unable to open tile %u as a JPEG file: %s\n",
         tilenum, error_str);
       memset(rawrgb, 0, rawrgb_size);
     }
@@ -224,8 +225,8 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
   tjDestroy(dec);
 
   int numTilesX = width_in_tiles(head);
-  uint32_t offset = ((tilenum % numTilesX) +
-                     (tilenum / numTilesX) * head->width) * head-> tile_size * 3;
+  size_t offset = ((size_t)(tilenum % numTilesX) +
+                     (tilenum / numTilesX) * (size_t)head->width) * (size_t)head-> tile_size * 3;
   int i;
   for (i=0; i < tileh; i++) {
     memcpy(dest + offset + i * head->width * 3,
@@ -236,6 +237,10 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, void* dest) {
 
 void read_file(pff_t *head, FILE* fin, FILE* fout) {
   uint64_t imgrgb_size = 3 * (uint64_t)head->width * (uint64_t)head->height;
+  if (imgrgb_size > INT_MAX) {
+    fprintf(stderr, "ERROR: image is too large, cannot allocate %lu bytes.\n", imgrgb_size);
+    exit(1);
+  }
   void* imgrgb = tjAlloc(imgrgb_size);
   if (imgrgb == NULL) {
     fprintf(stderr, "ERROR: Could not allocate enough memory to decode this image. Needed %.2f Gb.", (float)imgrgb_size/1000000000);
@@ -245,7 +250,7 @@ void read_file(pff_t *head, FILE* fin, FILE* fout) {
   
   uint32_t i, totalTiles = width_in_tiles(head) * height_in_tiles(head);
   for (i=0; i<totalTiles; i++) {
-    printf("\r Extracting tile %d out of %d", (i+1), totalTiles);
+    printf("\r Extracting tile %u out of %u", (i+1), totalTiles);
     read_tile(head, fin, i, imgrgb);
   }
 
@@ -280,7 +285,7 @@ int main(int argc, char** argv) {
 
   pff_t head;
   read_head(&head, f);
-  printf("version: 0x%x\nsize: %d x %d\nnumber of tiles: %d\n",
+  printf("version: 0x%x\nsize: %u x %u\nnumber of tiles: %u\n",
       head.version,head.width, head.height, head.ntiles); 
 
   read_file(&head, f, fjpg);
