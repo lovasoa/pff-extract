@@ -238,7 +238,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest) {
 void read_file(pff_t *head, FILE* fin, FILE* fout) {
   uint64_t imgrgb_size = 3 * (uint64_t)head->width * (uint64_t)head->height;
   if (imgrgb_size > INT_MAX) {
-    fprintf(stderr, "ERROR: image is too large, cannot allocate %lu bytes.\n", imgrgb_size);
+    fprintf(stderr, "ERROR: image is too large, cannot allocate %.2f Gb.\n", (float)imgrgb_size/1000000000);
     exit(1);
   }
   void* imgrgb = tjAlloc(imgrgb_size);
