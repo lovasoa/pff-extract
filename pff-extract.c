@@ -157,7 +157,6 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
                       ? 0x424 + head->jheader_size + 8*head->ntiles
                       : head->tile_pointers[tilenum-1];
   uint64_t end = head->tile_pointers[tilenum];
-  uint64_t size = end - begin - sizeof(tilefooter_t);
   fseek(fin, end-sizeof(tilefooter_t), SEEK_SET);
   //Read footer
   tilefooter_t footer;
@@ -166,11 +165,21 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
     fprintf(stderr, "\nERROR: Unable to read tile footer for tile %u\n", tilenum);
     return;
   }
+  footer.footersize = be32toh(footer.footersize);
+  footer.zoom_level = be32toh(footer.zoom_level);
+  footer.tile_num = be32toh(footer.tile_num);
+  footer.size = be32toh(footer.size);
   footer.jheader_num = be32toh(footer.jheader_num);
   if (footer.jheader_num >= head->jheader_num_elems) {
     fprintf(stderr, "Invalid tile footer for tile %u\n", tilenum);
     return;
   }
+
+  // Some files do not have a full footer, but only an (unit32_t) jheader_num
+  uint64_t size = footer.footersize == sizeof(tilefooter_t)
+                     ? footer.size
+		     : end - begin - sizeof(uint32_t);
+
   //Read jheader
   jheader_t jheader = head->jheaders[footer.jheader_num];
   //Write tile
