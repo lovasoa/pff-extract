@@ -209,7 +209,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
 
   if (tile_directory != NULL) {
     char* filename = malloc(512);
-    snprintf(filename, 512, "%s/tile_%04u_%04u.jpg", tile_directory, tile_y, tile_x);
+    snprintf(filename, 512, "%s/tile_%04lu_%04lu.jpg", tile_directory, tile_y, tile_x);
     FILE* tmpf = fopen(filename, "w");
     if (tmpf != NULL) {
       fwrite(rawjpg, rawjpgsize, 1, tmpf);
