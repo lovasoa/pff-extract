@@ -270,6 +270,10 @@ void read_file(pff_t *head, FILE* fin, FILE* fout, char* tile_directory) {
   memset(imgrgb, 0, imgrgb_size);
   
   uint32_t i, totalTiles = width_in_tiles(head) * height_in_tiles(head);
+  if (totalTiles > head->ntiles) {
+    fprintf(stderr, "WARNING: width and height not coherent with tile count.");
+    totalTiles = head->ntiles;
+  }
   for (i=0; i<totalTiles; i++) {
     printf("\r Extracting tile %u out of %u", (i+1), totalTiles);
     read_tile(head, fin, i, imgrgb, tile_directory);
