@@ -10,13 +10,14 @@ do
     echo -e "\n========= Testing '$f' ==========="
     ../pff-extract "$f" >output.txt 2>&1
     code=$?
-    tail output.txt
-    rm output.txt
-    echo "Exit code for '$f' : $code"
+    echo "Exit code: $code"
     if [[ $code -gt 100 || ( $code -ne 0 && $type -eq "correct" ) ]]
     then
+      tail output.txt
+      echo "TEST FAILED!"
       errors=$(($errors+1))
     fi
+    rm output.txt
     total=$(($total+1))
   done
 done
