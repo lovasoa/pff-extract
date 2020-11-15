@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-final=0
+errors=0
+total=0
 for f in files/*
 do
   echo -e "\n========= Testing '$f' ==========="
@@ -11,7 +12,10 @@ do
   echo "Exit code for '$f' : $code"
   if [ $code -gt 100 ]
   then
-    final=$code
+    errors=$(($errors+1))
   fi
+  total=$(($total+1))
 done
-exit $final
+
+echo "$errors/$total test failures."
+exit $errors
