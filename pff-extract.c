@@ -247,12 +247,21 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
   }
   tjDestroy(dec);
 
+  uint32_t tile_width = tilew, tile_height = tileh;
+  if (tile_width > head->tile_size ||
+      tile_height > head->tile_size) {
+    fprintf(stderr, "WARNING: Tile %u has size %dx%d instead of %ux%u\n",
+        tilenum, tile_width, tile_height, head->tile_size, head->tile_size);
+    tile_width = head->tile_size;
+    tile_height = head->tile_size;
+  }
+
   size_t offset = (tile_x + tile_y * head->width) * head->tile_size * 3;
-  int i;
-  for (i=0; i < tileh; i++) {
+  uint32_t i;
+  for (i=0; i < tile_height; i++) {
     memcpy(dest + offset + i * head->width * 3,
-           rawrgb + i * tilew * 3,
-           tilew * 3);
+           rawrgb + i * tile_width * 3,
+           tile_width * 3);
   }
 }
 
