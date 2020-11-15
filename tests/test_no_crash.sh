@@ -4,7 +4,7 @@ final=0
 for f in files/*
 do
   echo -e "\n========= Testing '$f' ==========="
-  ../pff-extract "$f" 2>&1 >output.txt
+  ../pff-extract "$f" >output.txt 2>&1
   code=$?
   tail output.txt
   rm output.txt
