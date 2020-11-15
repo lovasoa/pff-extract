@@ -211,7 +211,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
 
   if (tile_directory != NULL) {
     char* filename = malloc(512);
-    snprintf(filename, 512, "%s/tile_%04lu_%04lu.jpg", tile_directory, tile_y, tile_x);
+    snprintf(filename, 512, "%s/tile_%04zu_%04zu.jpg", tile_directory, tile_y, tile_x);
     FILE* tmpf = fopen(filename, "w");
     if (tmpf != NULL) {
       fwrite(rawjpg, rawjpgsize, 1, tmpf);
@@ -222,16 +222,26 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
   //Read the jpg image
   tjhandle dec = tjInitDecompress();
   assert(dec != NULL);
-  int rawrgb_size = 3 * head->tile_size * head->tile_size;
-  uint8_t* rawrgb = tjAlloc(rawrgb_size);
-  if (rawrgb == NULL) {
-    fprintf(stderr, "Unable to allocate enough memory for a single tile.\n");
-    exit(1);
-  }
   int tilew = 0, tileh = 0, tileSubSamp = 0;
   int ret = tjDecompressHeader2(dec, rawjpg, rawjpgsize, &tilew, &tileh, &tileSubSamp);
-  if (ret != -1) ret = tjDecompress2(dec, rawjpg, rawjpgsize, rawrgb,
-                  head->tile_size, 0, head->tile_size, TJPF_RGB, 0);
+
+  // Prevent the tile from overflowing the overall image dimensions
+  if ((size_t) tilew > MIN(head->tile_size, head->width - head->tile_size * tile_x) ||
+      (size_t) tileh > MIN(head->tile_size, head->height - head->tile_size * tile_y)) {
+    fprintf(stderr, "Invalid tile size %dx%d for tile at position %zu,%zu",
+            tilew, tileh, tile_x, tile_y);
+    return;
+  }
+
+  size_t offset = (tile_x + tile_y * head->width) * head->tile_size * 3;
+  if (ret != -1) ret = tjDecompress2(dec, rawjpg, rawjpgsize,
+                  dest + offset, // destination pointer
+                  tilew, // width
+                  head->width * 3, // pitch (bytes per line)
+                  tileh, // height
+                  TJPF_RGB, // pixel format
+                  0 // flags
+                );
   free(rawjpg);
 
   if (ret == -1) {
@@ -244,24 +254,10 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
       // Fatal error
       fprintf(stderr, "\nERROR: Unable to open tile %u as a JPEG file: %s\n",
         tilenum, error_str);
-      memset(rawrgb, 0, rawrgb_size);
     }
   }
   tjDestroy(dec);
 
-  // Prevent the tile from overflowing the overall image dimensions
-  uint32_t tile_width = MIN(MIN((uint32_t)tilew, head->tile_size),
-                                head->width - head->tile_size * tile_x);
-  uint32_t tile_height = MIN(MIN((uint32_t)tileh, head->tile_size),
-                                head->height - head->tile_size * tile_y);
-
-  size_t offset = (tile_x + tile_y * head->width) * head->tile_size * 3;
-  uint32_t line;
-  for (line=0; line < tile_height; line++) {
-    memcpy(dest + offset + line * head->width * 3,
-           rawrgb + line * tile_width * 3,
-           tile_width * 3);
-  }
 }
 
 void read_file(pff_t *head, FILE* fin, FILE* fout, char* tile_directory) {
