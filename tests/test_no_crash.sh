@@ -11,10 +11,16 @@ do
     ../pff-extract "$f" >output.txt 2>&1
     code=$?
     echo "Exit code: $code"
-    if [[ $code -gt 100 || ( $code -ne 0 && $type -eq "correct" ) ]]
+    if [ $code -gt 100 ]
     then
       tail output.txt
-      echo "TEST FAILED!"
+      echo "TEST FAILED ! Program crashed"
+      errors=$(($errors+1))
+    fi
+    if [ $code -ne 0 ] && [ "$type" = "correct" ]
+    then
+      tail output.txt
+      echo "Program returned an error"
       errors=$(($errors+1))
     fi
     rm output.txt
