@@ -20,3 +20,5 @@ jobs:
       with:
         name: pff-extract-${{ matrix.os }}
         path: pff-extract
+    - name: run tests
+      run: cd tests && ./test_no_crash.sh
