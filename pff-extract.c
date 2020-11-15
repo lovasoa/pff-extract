@@ -34,6 +34,8 @@
 #include <string.h>
 #include <limits.h>
 #include <turbojpeg.h>
+#define MAX( a, b ) ( ( a > b ) ? a : b )
+#define MIN( a, b ) ( ( a < b ) ? a : b )
 
 typedef struct {
   uint32_t size;
@@ -247,20 +249,17 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
   }
   tjDestroy(dec);
 
-  uint32_t tile_width = tilew, tile_height = tileh;
-  if (tile_width > head->tile_size ||
-      tile_height > head->tile_size) {
-    fprintf(stderr, "WARNING: Tile %u has size %dx%d instead of %ux%u\n",
-        tilenum, tile_width, tile_height, head->tile_size, head->tile_size);
-    tile_width = head->tile_size;
-    tile_height = head->tile_size;
-  }
+  // Prevent the tile from overflowing the overall image dimensions
+  uint32_t tile_width = MIN(MIN((uint32_t)tilew, head->tile_size),
+                                head->width - head->tile_size * tile_x);
+  uint32_t tile_height = MIN(MIN((uint32_t)tileh, head->tile_size),
+                                head->height - head->tile_size * tile_y);
 
   size_t offset = (tile_x + tile_y * head->width) * head->tile_size * 3;
-  uint32_t i;
-  for (i=0; i < tile_height; i++) {
-    memcpy(dest + offset + i * head->width * 3,
-           rawrgb + i * tile_width * 3,
+  uint32_t line;
+  for (line=0; line < tile_height; line++) {
+    memcpy(dest + offset + line * head->width * 3,
+           rawrgb + line * tile_width * 3,
            tile_width * 3);
   }
 }
