@@ -109,7 +109,7 @@ void read_head(pff_t *head, FILE *f) {
 
   if (head->tile_size == 0 || head->jheader_size == 0 || head->width == 0 ||
       head->height == 0 || head->jheader_num_elems == 0 ||
-      head->jheader_num_elems * 4 > filesize || head->ntiles * 8 > filesize) {
+      head->jheader_num_elems > filesize / 4 || head->ntiles > filesize / 8) {
       perror("Invalid file");
       exit(1);
   }
