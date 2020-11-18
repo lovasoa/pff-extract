@@ -228,7 +228,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
   // Prevent the tile from overflowing the overall image dimensions
   if ((size_t) tilew > MIN(head->tile_size, head->width - head->tile_size * tile_x) ||
       (size_t) tileh > MIN(head->tile_size, head->height - head->tile_size * tile_y)) {
-    fprintf(stderr, "Invalid tile size %dx%d for tile at position %zu,%zu",
+    fprintf(stderr, "Invalid tile size %dx%d for tile at position %zu,%zu\n",
             tilew, tileh, tile_x, tile_y);
     return;
   }
