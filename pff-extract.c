@@ -129,7 +129,7 @@ void read_head(pff_t *head, FILE *f) {
     head->jheaders[i].size = size;
     uint8_t* data = malloc((size_t) size);
     if (data == NULL) {
-      fprintf(stderr, "Failed to allocate %u bytes for tile header %u.", size, i);
+      fprintf(stderr, "Failed to allocate %u bytes for tile header %u.\n", size, i);
       exit(1);
     }
     fread_or_exit(data, size, f);
@@ -240,7 +240,7 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
                   head->width * 3, // pitch (bytes per line)
                   tileh, // height
                   TJPF_RGB, // pixel format
-                  0 // flags
+                  TJFLAG_NOREALLOC // flags
                 );
   free(rawjpg);
 
@@ -262,20 +262,23 @@ void read_tile(pff_t *head, FILE* fin, uint32_t tilenum, uint8_t* dest, char* ti
 
 void read_file(pff_t *head, FILE* fin, FILE* fout, char* tile_directory) {
   uint64_t imgrgb_size = 3 * (uint64_t)head->width * (uint64_t)head->height;
-  if (imgrgb_size > INT_MAX) {
-    fprintf(stderr, "ERROR: image is too large, cannot allocate %.2f Gb.\n", (float)imgrgb_size/1000000000);
+  if (imgrgb_size > SIZE_MAX) {
+    fprintf(stderr,
+        "ERROR: image is too large: %.2f Gb, but your system doesn't allow allocations larger than %.2f\n",
+        (float)imgrgb_size/1000000000,
+        (float)SIZE_MAX   /1000000000);
     exit(1);
   }
-  void* imgrgb = tjAlloc(imgrgb_size);
+  void* imgrgb = malloc((size_t)imgrgb_size);
   if (imgrgb == NULL) {
-    fprintf(stderr, "ERROR: Could not allocate enough memory to decode this image. Needed %.2f Gb.", (float)imgrgb_size/1000000000);
+    fprintf(stderr, "ERROR: Could not allocate enough memory to decode this image. Needed %.2f Gb.\n", (float)imgrgb_size/1000000000);
     exit(1);
   }
   memset(imgrgb, 0, imgrgb_size);
   
   uint32_t i, totalTiles = width_in_tiles(head) * height_in_tiles(head);
   if (totalTiles > head->ntiles) {
-    fprintf(stderr, "WARNING: width and height not coherent with tile count.");
+    fprintf(stderr, "WARNING: width and height not coherent with tile count.\n");
     totalTiles = head->ntiles;
   }
   for (i=0; i<totalTiles; i++) {
@@ -284,18 +287,33 @@ void read_file(pff_t *head, FILE* fin, FILE* fout, char* tile_directory) {
   }
 
   printf("\nCompressing the output image\n");
+  int ret = 0;
   tjhandle comp = tjInitCompress();
+  if (comp == NULL) ret = -1;
   unsigned char* imgjpg = NULL;
   unsigned long imgjpgsize = 0;
-  tjCompress2(comp, imgrgb, head->width, 0, head->height,
+  if (ret == 0) ret = tjCompress2(comp, imgrgb, head->width, 0, head->height,
                TJPF_RGB, &imgjpg, &imgjpgsize, TJSAMP_444, 100, 0);
-
+  if (ret == -1) {
+    int error_code = tjGetErrorCode(comp);
+    char* error_str = tjGetErrorStr2(comp);
+    if (tile_directory == NULL)
+      fprintf(stderr, "You may want to export individual tiles by calling\npff-extract out.jpg tiles_directory\n");
+    if (error_code == TJERR_WARNING) {
+      // Only a warning, there is some decoded data, so continue anyway
+      fprintf(stderr, "WARNING: The output file could not be fully written: %s\n", error_str);
+    } else {
+      // Fatal error
+      fprintf(stderr, "ERROR: Unable to export the result as a JPEG file: %s.\n", error_str);
+      exit(1);
+    }
+  }
   fwrite(imgjpg, imgjpgsize, 1, fout);
 }
 
 int main(int argc, char** argv) {
   if (argc < 2) {
-    printf("Usage: %s input.pff [out.jpg] [tile_directory]\nRead the PFF file input.pff and extract its largest zoom level to out.jpg. If tile_directory is specified, every single tile at that level is exported as a separate file in that folder.", argv[0]);
+    printf("Usage: %s input.pff [out.jpg] [tile_directory]\nRead the PFF file input.pff and extract its largest zoom level to out.jpg. If tile_directory is specified, every single tile at that level is exported as a separate file in that folder.\n", argv[0]);
     return 1;
   }
 
