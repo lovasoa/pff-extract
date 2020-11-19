@@ -26,9 +26,9 @@ gcc -o pff-extract pff-extract.c -lturbojpeg
 
 ### Correctness
 
-This program should handle all files, even malformed ones, safely,
+This program should handle all files safely, even malformed ones, 
 and display a clear error message when it fails to process a file.
 Version 0.7 was fuzzed for multiple hours on 12 instances of [AFL](https://github.com/google/AFL),
-without any crashes. The program should be safe from memory errors.
+without any crash. The program should be safe from memory errors.
 However, this is a free software that comes without any warranty of any kind.
 If you find an error, you can [report it](https://github.com/lovasoa/pff-extract/issues/new).
